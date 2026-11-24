@@ -1,256 +1,1106 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>井字棋 Tic-Tac-Toe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Infinite Decay Tic-Tac-Toe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f4f6f9;
-      --card: #ffffff;
-      --primary: #2563eb;
-      --x-color: #ef4444;
-      --o-color: #10b981;
-      --text: #1e293b;
-      --border: #cbd5e1;
+      --bg-dark: #070913;
+      --cyan-glow: #00f3ff;
+      --cyan-dim: rgba(0, 243, 255, 0.15);
+      --magenta-glow: #ff007f;
+      --magenta-dim: rgba(255, 0, 127, 0.15);
+      --amber-glow: #ffb703;
     }
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 16px;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(0, 243, 255, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(255, 0, 127, 0.08) 0%, transparent 45%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: #f8fafc;
+      min-height: 100dvh;
+      overflow-x: hidden;
     }
 
-    .container {
-      background: var(--card);
-      padding: 28px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      text-align: center;
-      max-width: 380px;
-      width: 100%;
+    .font-display {
+      font-family: 'Orbitron', sans-serif;
     }
 
-    h1 {
-      font-size: 1.6rem;
-      margin-bottom: 16px;
+    /* Glassmorphism Panel */
+    .glass-panel {
+      background: rgba(15, 20, 38, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    .controls {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 16px;
+    /* Board Cells */
+    .game-cell {
+      background: rgba(22, 29, 53, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+      transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+      position: relative;
+      overflow: hidden;
     }
 
-    select, button {
-      padding: 8px 14px;
-      font-size: 0.95rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      background: #fff;
-      transition: all 0.2s;
+    .game-cell:hover:not(.occupied):not(.board-locked) {
+      background: rgba(34, 45, 82, 0.85);
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     }
 
-    button {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      font-weight: 500;
+    .game-cell:active:not(.occupied):not(.board-locked) {
+      transform: scale(0.95);
     }
 
-    button:hover {
-      opacity: 0.9;
+    /* Neon Mark Animations */
+    @keyframes popIn {
+      0% {
+        transform: scale(0.3) rotate(-12deg);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.1) rotate(3deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
     }
 
-    .status {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 18px;
-      min-height: 1.5em;
+    .mark-enter {
+      animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 
-    .board {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 10px;
+    /* Decay Warning Pulse for the Oldest Piece (4th move will erase it) */
+    @keyframes decayPulse {
+      0%, 100% {
+        opacity: 0.38;
+        transform: scale(0.9);
+      }
+      50% {
+        opacity: 0.72;
+        transform: scale(0.96);
+      }
     }
 
-    .cell {
-      aspect-ratio: 1 / 1;
-      background: #f8fafc;
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      font-size: 2.8rem;
-      font-weight: bold;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.15s, transform 0.1s;
+    .mark-expiring {
+      animation: decayPulse 1.3s ease-in-out infinite;
     }
 
-    .cell:hover:not(.taken) {
-      background: #e2e8f0;
+    .cell-expiring-x {
+      border-color: rgba(0, 243, 255, 0.45) !important;
+      box-shadow: inset 0 0 18px rgba(0, 243, 255, 0.14);
     }
 
-    .cell:active:not(.taken) {
-      transform: scale(0.96);
+    .cell-expiring-o {
+      border-color: rgba(255, 0, 127, 0.45) !important;
+      box-shadow: inset 0 0 18px rgba(255, 0, 127, 0.14);
     }
 
-    .cell.x {
-      color: var(--x-color);
+    /* Winning Line Highlight */
+    @keyframes winPulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.04);
+      }
     }
 
-    .cell.o {
-      color: var(--o-color);
+    .cell-win-x {
+      background: rgba(0, 243, 255, 0.18) !important;
+      border-color: var(--cyan-glow) !important;
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.45), inset 0 0 15px rgba(0, 243, 255, 0.3);
+      animation: winPulse 1.2s ease-in-out infinite;
     }
 
-    .cell.win {
-      background: #fef08a;
-      border-color: #eab308;
+    .cell-win-o {
+      background: rgba(255, 0, 127, 0.18) !important;
+      border-color: var(--magenta-glow) !important;
+      box-shadow: 0 0 25px rgba(255, 0, 127, 0.45), inset 0 0 15px rgba(255, 0, 127, 0.3);
+      animation: winPulse 1.2s ease-in-out infinite;
+    }
+
+    /* Neon Drop Shadows for SVGs */
+    .neon-x {
+      filter: drop-shadow(0 0 8px rgba(0, 243, 255, 0.85)) drop-shadow(0 0 18px rgba(0, 243, 255, 0.45));
+    }
+
+    .neon-o {
+      filter: drop-shadow(0 0 8px rgba(255, 0, 127, 0.85)) drop-shadow(0 0 18px rgba(255, 0, 127, 0.45));
+    }
+
+    /* Custom Scrollbar for Rules Modal */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 20, 38, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 9999px;
+    }
+
+    /* Particle Canvas Overlay */
+    #particleCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>井字棋 Tic-Tac-Toe</h1>
+<body class="flex flex-col items-center justify-center p-3 sm:p-6">
 
-    <div class="controls">
-      <select id="mode">
-        <option value="pvp">双人对战</option>
-        <option value="ai">人机对战 (AI)</option>
-      </select>
-      <button id="resetBtn">重新开始</button>
+  <!-- Particle Celebration Canvas -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Main Game Wrapper -->
+  <main class="w-full max-w-md glass-panel rounded-3xl p-5 sm:p-7 relative z-10 flex flex-col gap-5">
+    
+    <!-- Top Header: Title & Utility Controls -->
+    <header class="flex items-center justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#00f3ff] animate-pulse"></span>
+          <h1 class="font-display text-lg sm:text-xl font-black tracking-wider bg-gradient-to-r from-cyan-300 via-white to-pink-400 bg-clip-text text-transparent">
+            DECAY GRID
+          </h1>
+        </div>
+        <p id="subtitleText" class="text-xs text-slate-400 mt-0.5">3-Piece Limit • Zero Draws</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Rules / Help Trigger -->
+        <button id="rulesBtn" aria-label="How to Play" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-slate-300 hover:text-white transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+
+        <!-- Sound Mute/Unmute Toggle -->
+        <button id="soundBtn" aria-label="Toggle Sound" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-cyan-400 transition">
+          <svg id="soundOnIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <svg id="soundOffIcon" class="w-4 h-4 hidden text-slate-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mode & Opponent Selectors -->
+    <section class="grid grid-cols-2 gap-2.5">
+      <!-- Game Rule Variant Switch -->
+      <div class="bg-slate-900/80 p-1 rounded-2xl border border-white/10 flex">
+        <button id="modeDecayBtn" class="flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(0,243,255,0.15)]">
+          ⚡ Decay (3-Max)
+        </button>
+        <button id="modeClassicBtn" class="flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent">
+          Classic
+        </button>
+      </div>
+
+      <!-- Opponent Switch -->
+      <div class="bg-slate-900/80 p-1 rounded-2xl border border-white/10 flex">
+        <button id="oppAiBtn" class="flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-pink-500/20 text-pink-300 border border-pink-400/40 shadow-[0_0_12px_rgba(255,0,127,0.15)]">
+          🤖 vs AI
+        </button>
+        <button id="oppPvpBtn" class="flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent">
+          👥 2 Players
+        </button>
+      </div>
+    </section>
+
+    <!-- Scoreboard & Active Charge Meters -->
+    <section class="grid grid-cols-3 gap-2.5 items-center">
+      <!-- Player X Card -->
+      <div id="cardX" class="rounded-2xl p-3 bg-slate-900/70 border border-cyan-400/40 transition-all duration-300 flex flex-col items-center">
+        <div class="flex items-center gap-1.5">
+          <span class="font-display font-bold text-cyan-400 text-sm">X</span>
+          <span id="labelX" class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">You</span>
+        </div>
+        <div id="scoreX" class="font-display text-2xl font-black text-white mt-0.5">0</div>
+        <!-- 3-Piece Slot Indicators -->
+        <div id="slotsX" class="flex gap-1.5 mt-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+        </div>
+      </div>
+
+      <!-- Streak / Center Status -->
+      <div class="rounded-2xl p-2.5 bg-slate-900/40 border border-white/5 flex flex-col items-center justify-center text-center">
+        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Streak</span>
+        <div class="flex items-center gap-1 mt-0.5">
+          <span class="text-amber-400 text-sm">🔥</span>
+          <span id="streakCount" class="font-display text-xl font-bold text-amber-300">0</span>
+        </div>
+        <span id="drawsLabel" class="text-[10px] text-slate-500 mt-1">No Draws</span>
+      </div>
+
+      <!-- Player O Card -->
+      <div id="cardO" class="rounded-2xl p-3 bg-slate-900/70 border border-white/10 transition-all duration-300 flex flex-col items-center">
+        <div class="flex items-center gap-1.5">
+          <span class="font-display font-bold text-pink-500 text-sm">O</span>
+          <span id="labelO" class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Cyber AI</span>
+        </div>
+        <div id="scoreO" class="font-display text-2xl font-black text-white mt-0.5">0</div>
+        <!-- 3-Piece Slot Indicators -->
+        <div id="slotsO" class="flex gap-1.5 mt-1.5">
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700 transition-all"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dynamic Status Banner -->
+    <div id="statusBanner" class="py-2.5 px-4 rounded-2xl bg-slate-900/90 border border-white/10 text-center flex items-center justify-center gap-2 min-h-[44px]">
+      <span id="statusText" class="text-sm font-semibold tracking-wide text-cyan-300">
+        Player X's Turn
+      </span>
     </div>
 
-    <div class="status" id="status">轮到玩家 X 落子</div>
+    <!-- 3x3 Neon Game Grid -->
+    <section class="w-full aspect-square grid grid-cols-3 grid-rows-3 gap-3 sm:gap-3.5" id="boardGrid">
+      <!-- 9 Cells populated by JS -->
+    </section>
 
-    <div class="board" id="board">
-      <div class="cell" data-index="0"></div>
-      <div class="cell" data-index="1"></div>
-      <div class="cell" data-index="2"></div>
-      <div class="cell" data-index="3"></div>
-      <div class="cell" data-index="4"></div>
-      <div class="cell" data-index="5"></div>
-      <div class="cell" data-index="6"></div>
-      <div class="cell" data-index="7"></div>
-      <div class="cell" data-index="8"></div>
+    <!-- Bottom Action Bar -->
+    <footer class="flex items-center gap-3 pt-1">
+      <button id="newRoundBtn" class="flex-1 py-3 px-4 rounded-2xl font-display text-xs sm:text-sm font-bold tracking-wider uppercase bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-[0_0_20px_rgba(0,243,255,0.3)] active:scale-98 transition">
+        New Round
+      </button>
+      <button id="resetScoresBtn" class="py-3 px-4 rounded-2xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 transition">
+        Reset Scores
+      </button>
+    </footer>
+  </main>
+
+  <!-- How to Play Modal -->
+  <div id="rulesModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl max-w-sm w-full p-6 border border-cyan-400/30 relative">
+      <h2 class="font-display text-lg font-bold text-cyan-300 mb-3 flex items-center gap-2">
+        <span>⚡</span> How Decay Mode Works
+      </h2>
+      <ul class="space-y-3 text-sm text-slate-300 leading-relaxed">
+        <li class="flex items-start gap-2.5">
+          <span class="text-cyan-400 font-bold">1.</span>
+          <span>Each player can only hold <strong class="text-white">3 active marks</strong> on the grid at any time.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-pink-400 font-bold">2.</span>
+          <span>Once you have 3 marks down, your <strong class="text-white">oldest mark begins pulsing</strong>.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-amber-400 font-bold">3.</span>
+          <span>Placing your 4th mark <strong class="text-white">evaporates that oldest mark</strong>, opening the square back up!</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <span class="text-emerald-400 font-bold">4.</span>
+          <span>Align 3 marks horizontally, vertically, or diagonally to win. <strong class="text-white">Draws are impossible!</strong></span>
+        </li>
+      </ul>
+      <button id="closeRulesBtn" class="mt-6 w-full py-3 rounded-2xl font-display text-xs font-bold uppercase tracking-wider bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition">
+        Got It
+      </button>
     </div>
   </div>
 
   <script>
-    const cells = document.querySelectorAll('.cell');
-    const statusText = document.getElementById('status');
-    const resetBtn = document.getElementById('resetBtn');
-    const modeSelect = document.getElementById('mode');
+    /**
+     * =========================================================================
+     * 1. WEB AUDIO SYNTHESIZER (Zero External Audio Dependencies)
+     * =========================================================================
+     */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
 
-    let board = Array(9).fill('');
-    let currentPlayer = 'X';
-    let gameActive = true;
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
 
-    const winConditions = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // 行
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // 列
-      [0, 4, 8], [2, 4, 6]             // 对角线
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playPlace(player, decayed = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // Cyan X gets a crisp high-tech chime; Magenta O gets a warm synth pulse
+        osc.type = player === 'X' ? 'triangle' : 'sine';
+        const baseFreq = player === 'X' ? 520 : 380;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, now + 0.11);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+
+        // Subtle sub-whoosh when an older mark vanishes
+        if (decayed) {
+          const decayOsc = this.ctx.createOscillator();
+          const decayGain = this.ctx.createGain();
+          decayOsc.type = 'sine';
+          decayOsc.frequency.setValueAtTime(240, now);
+          decayOsc.frequency.exponentialRampToValueAtTime(95, now + 0.18);
+          decayGain.gain.setValueAtTime(0.12, now);
+          decayGain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+          decayOsc.connect(decayGain);
+          decayGain.connect(this.ctx.destination);
+          decayOsc.start(now);
+          decayOsc.stop(now + 0.2);
+        }
+      }
+
+      playWin() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.085;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.36);
+        });
+      }
+
+      playDraw() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = [330, 293.66];
+        notes.forEach((freq, idx) => {
+          const now = this.ctx.currentTime + idx * 0.14;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.23);
+        });
+      }
+
+      playClick() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(680, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 2. PARTICLE CELEBRATION SYSTEM
+     * =========================================================================
+     */
+    class ParticleBurst {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.particles = [];
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.loop();
+      }
+
+      resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      }
+
+      spawn(x, y, color) {
+        for (let i = 0; i < 65; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2.5 + Math.random() * 7.5;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 2,
+            size: 2.5 + Math.random() * 4,
+            color,
+            alpha: 1,
+            decay: 0.014 + Math.random() * 0.018
+          });
+        }
+      }
+
+      loop() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.16; // gentle gravity
+          p.vx *= 0.98;
+          p.alpha -= p.decay;
+
+          if (p.alpha <= 0) {
+            this.particles.splice(i, 1);
+            continue;
+          }
+
+          this.ctx.save();
+          this.ctx.globalAlpha = p.alpha;
+          this.ctx.fillStyle = p.color;
+          this.ctx.shadowBlur = 12;
+          this.ctx.shadowColor = p.color;
+          this.ctx.beginPath();
+          this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+        requestAnimationFrame(() => this.loop());
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 3. GAME STATE & CORE ENGINE
+     * =========================================================================
+     */
+    const WIN_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+      [0, 4, 8], [2, 4, 6]             // Diagonals
     ];
 
-    function handleCellClick(e) {
-      const index = e.target.getAttribute('data-index');
-      if (board[index] !== '' || !gameActive) return;
+    const sfx = new SoundFX();
+    const particles = new ParticleBurst(document.getElementById('particleCanvas'));
 
-      makeMove(index, currentPlayer);
+    const state = {
+      mode: 'decay',       // 'decay' | 'classic'
+      opponent: 'ai',      // 'ai' | 'pvp'
+      board: Array(9).fill(null),
+      queueX: [],          // FIFO queue of indices placed by X
+      queueO: [],          // FIFO queue of indices placed by O
+      currentPlayer: 'X',
+      gameOver: false,
+      winningLine: null,
+      aiThinking: false,
+      scores: { X: 0, O: 0, draws: 0 },
+      streak: 0,
+      lastWinner: null
+    };
 
-      if (gameActive && modeSelect.value === 'ai' && currentPlayer === 'O') {
-        setTimeout(aiMove, 250);
+    // DOM References
+    const boardGrid = document.getElementById('boardGrid');
+    const statusText = document.getElementById('statusText');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+    const streakCountEl = document.getElementById('streakCount');
+    const drawsLabelEl = document.getElementById('drawsLabel');
+    const cardX = document.getElementById('cardX');
+    const cardO = document.getElementById('cardO');
+    const labelX = document.getElementById('labelX');
+    const labelO = document.getElementById('labelO');
+    const slotsX = document.getElementById('slotsX');
+    const slotsO = document.getElementById('slotsO');
+    const subtitleText = document.getElementById('subtitleText');
+
+    // SVG Generators for Crisp Neon Marks
+    function getMarkSVG(player, isExpiring = false) {
+      const animClass = isExpiring ? 'mark-expiring' : 'mark-enter';
+      if (player === 'X') {
+        return `
+          <svg class="w-14 h-14 sm:w-16 sm:h-16 neon-x ${animClass}" viewBox="0 0 100 100" fill="none">
+            <line x1="22" y1="22" x2="78" y2="78" stroke="#00f3ff" stroke-width="11" stroke-linecap="round"/>
+            <line x1="78" y1="22" x2="22" y2="78" stroke="#00f3ff" stroke-width="11" stroke-linecap="round"/>
+          </svg>
+        `;
+      }
+      return `
+        <svg class="w-14 h-14 sm:w-16 sm:h-16 neon-o ${animClass}" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="30" stroke="#ff007f" stroke-width="11"/>
+        </svg>
+      `;
+    }
+
+    // Initialize 9 interactive cells
+    function buildBoardDOM() {
+      boardGrid.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.index = i;
+        btn.ariaLabel = `Grid cell ${i + 1}`;
+        btn.className = 'game-cell flex items-center justify-center cursor-pointer focus:outline-none';
+        btn.addEventListener('click', () => handleCellTap(i));
+        boardGrid.appendChild(btn);
       }
     }
 
-    function makeMove(index, player) {
-      board[index] = player;
-      const cell = cells[index];
-      cell.textContent = player;
-      cell.classList.add('taken', player.toLowerCase());
-
-      const winCombo = checkWin(player);
-      if (winCombo) {
-        statusText.textContent = `🎉 玩家 ${player} 获胜！`;
-        gameActive = false;
-        winCombo.forEach(i => cells[i].classList.add('win'));
-        return;
-      }
-
-      if (!board.includes('')) {
-        statusText.textContent = '🤝 双方平局！';
-        gameActive = false;
-        return;
-      }
-
-      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-      statusText.textContent = `轮到玩家 ${currentPlayer} 落子`;
-    }
-
-    function checkWin(player) {
-      for (const combo of winConditions) {
-        if (combo.every(index => board[index] === player)) {
-          return combo;
+    // Check if a board array has a winner
+    function evaluateWinner(boardArr) {
+      for (const line of WIN_LINES) {
+        const [a, b, c] = line;
+        if (boardArr[a] && boardArr[a] === boardArr[b] && boardArr[a] === boardArr[c]) {
+          return { winner: boardArr[a], line };
         }
       }
       return null;
     }
 
-    // 简单策略 AI：优先赢 -> 其次堵截 -> 抢占中心 -> 随机空位
-    function aiMove() {
-      if (!gameActive) return;
+    // Handle User Tap on Cell
+    function handleCellTap(index) {
+      if (state.gameOver || state.aiThinking) return;
+      if (state.board[index] !== null) return;
+      if (state.opponent === 'ai' && state.currentPlayer === 'O') return;
 
-      let move = findBestMove('O') ?? findBestMove('X');
-      if (move === null && board[4] === '') move = 4;
-      if (move === null) {
-        const empty = board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
-        move = empty[Math.floor(Math.random() * empty.length)];
+      executeMove(index, state.currentPlayer);
+
+      // Trigger AI response if applicable
+      if (!state.gameOver && state.opponent === 'ai' && state.currentPlayer === 'O') {
+        state.aiThinking = true;
+        updateStatusUI();
+        setTimeout(() => {
+          const aiIndex = computeBestAIMove();
+          state.aiThinking = false;
+          if (aiIndex !== null && !state.gameOver) {
+            executeMove(aiIndex, 'O');
+          }
+        }, 360);
       }
-
-      makeMove(move, 'O');
     }
 
-    function findBestMove(player) {
-      for (const [a, b, c] of winConditions) {
-        const line = [board[a], board[b], board[c]];
-        if (line.filter(v => v === player).length === 2 && line.includes('')) {
-          return [a, b, c][line.indexOf('')];
+    // Execute a move for X or O, applying Decay Queue logic if active
+    function executeMove(index, player) {
+      const queue = player === 'X' ? state.queueX : state.queueO;
+      let decayed = false;
+
+      // In Decay Mode, if player already has 3 marks, remove the oldest one first
+      if (state.mode === 'decay' && queue.length >= 3) {
+        const oldestIndex = queue.shift();
+        state.board[oldestIndex] = null;
+        decayed = true;
+      }
+
+      state.board[index] = player;
+      queue.push(index);
+
+      sfx.playPlace(player, decayed);
+
+      // Check Victory
+      const winResult = evaluateWinner(state.board);
+      if (winResult) {
+        state.gameOver = true;
+        state.winningLine = winResult.line;
+        state.scores[player]++;
+
+        if (state.lastWinner === player) {
+          state.streak++;
+        } else {
+          state.lastWinner = player;
+          state.streak = 1;
         }
+
+        sfx.playWin();
+        triggerWinParticles(winResult.line, player);
+        renderAll();
+        return;
       }
-      return null;
+
+      // Check Draw (only possible in Classic mode)
+      if (state.mode === 'classic' && !state.board.includes(null)) {
+        state.gameOver = true;
+        state.scores.draws++;
+        state.streak = 0;
+        state.lastWinner = null;
+        sfx.playDraw();
+        renderAll();
+        return;
+      }
+
+      // Switch turns
+      state.currentPlayer = player === 'X' ? 'O' : 'X';
+      renderAll();
     }
 
-    function resetGame() {
-      board = Array(9).fill('');
-      currentPlayer = 'X';
-      gameActive = true;
-      statusText.textContent = '轮到玩家 X 落子';
-      cells.forEach(cell => {
-        cell.textContent = '';
-        cell.className = 'cell';
+    // Spawn particle burst over the winning line cells
+    function triggerWinParticles(line, player) {
+      const color = player === 'X' ? '#00f3ff' : '#ff007f';
+      const cellEls = boardGrid.children;
+      line.forEach(idx => {
+        const rect = cellEls[idx].getBoundingClientRect();
+        particles.spawn(rect.left + rect.width / 2, rect.top + rect.height / 2, color);
       });
     }
 
-    cells.forEach(cell => cell.addEventListener('click', handleCellClick));
-    resetBtn.addEventListener('click', resetGame);
-    modeSelect.addEventListener('change', resetGame);
+    /**
+     * =========================================================================
+     * 4. SMART AI ENGINE (Decay-Aware Depth Search + Classic Minimax)
+     * =========================================================================
+     */
+    function computeBestAIMove() {
+      const emptyIndices = state.board
+        .map((val, idx) => (val === null ? idx : null))
+        .filter(val => val !== null);
+
+      if (emptyIndices.length === 0) return null;
+
+      if (state.mode === 'classic') {
+        return findBestClassicMove();
+      } else {
+        return findBestDecayMove();
+      }
+    }
+
+    // Classic Unbeatable Minimax (with slight opening variety)
+    function findBestClassicMove() {
+      if (state.queueO.length === 0 && state.board[4] === null) return 4;
+
+      let bestScore = -Infinity;
+      let bestMove = null;
+
+      for (let i = 0; i < 9; i++) {
+        if (state.board[i] === null) {
+          state.board[i] = 'O';
+          const score = minimaxClassic(state.board, 0, false);
+          state.board[i] = null;
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = i;
+          }
+        }
+      }
+      return bestMove;
+    }
+
+    function minimaxClassic(board, depth, isMaximizing) {
+      const res = evaluateWinner(board);
+      if (res) return res.winner === 'O' ? 10 - depth : depth - 10;
+      if (!board.includes(null)) return 0;
+
+      if (isMaximizing) {
+        let best = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'O';
+            best = Math.max(best, minimaxClassic(board, depth + 1, false));
+            board[i] = null;
+          }
+        }
+        return best;
+      } else {
+        let best = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'X';
+            best = Math.min(best, minimaxClassic(board, depth + 1, true));
+            board[i] = null;
+          }
+        }
+        return best;
+      }
+    }
+
+    // Decay-Aware Tactical Search (Simulates FIFO piece evaporation up to 5 plies)
+    function findBestDecayMove() {
+      let bestScore = -Infinity;
+      let candidates = [];
+
+      for (let i = 0; i < 9; i++) {
+        if (state.board[i] === null) {
+          const simState = simulateDecayStep(
+            { board: [...state.board], qX: [...state.queueX], qO: [...state.queueO] },
+            i,
+            'O'
+          );
+          const score = minimaxDecay(simState, 4, false, -Infinity, Infinity);
+          if (score > bestScore) {
+            bestScore = score;
+            candidates = [i];
+          } else if (score === bestScore) {
+            candidates.push(i);
+          }
+        }
+      }
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    function simulateDecayStep(sim, index, player) {
+      const board = [...sim.board];
+      const qX = [...sim.qX];
+      const qO = [...sim.qO];
+      const queue = player === 'X' ? qX : qO;
+
+      if (queue.length >= 3) {
+        const removed = queue.shift();
+        board[removed] = null;
+      }
+      board[index] = player;
+      queue.push(index);
+
+      return { board, qX, qO };
+    }
+
+    function minimaxDecay(sim, depth, isMaximizing, alpha, beta) {
+      const res = evaluateWinner(sim.board);
+      if (res) {
+        return res.winner === 'O' ? 100 + depth * 10 : -100 - depth * 10;
+      }
+      if (depth === 0) {
+        return heuristicBoardScore(sim.board);
+      }
+
+      if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (sim.board[i] === null) {
+            const nextSim = simulateDecayStep(sim, i, 'O');
+            const ev = minimaxDecay(nextSim, depth - 1, false, alpha, beta);
+            maxEval = Math.max(maxEval, ev);
+            alpha = Math.max(alpha, ev);
+            if (beta <= alpha) break;
+          }
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (sim.board[i] === null) {
+            const nextSim = simulateDecayStep(sim, i, 'X');
+            const ev = minimaxDecay(nextSim, depth - 1, true, alpha, beta);
+            minEval = Math.min(minEval, ev);
+            beta = Math.min(beta, ev);
+            if (beta <= alpha) break;
+          }
+        }
+        return minEval;
+      }
+    }
+
+    function heuristicBoardScore(board) {
+      let score = 0;
+      if (board[4] === 'O') score += 4;
+      if (board[4] === 'X') score -= 4;
+
+      for (const [a, b, c] of WIN_LINES) {
+        const line = [board[a], board[b], board[c]];
+        const oCount = line.filter(v => v === 'O').length;
+        const xCount = line.filter(v => v === 'X').length;
+        if (oCount === 2 && xCount === 0) score += 6;
+        if (xCount === 2 && oCount === 0) score -= 7;
+      }
+      return score;
+    }
+
+    /**
+     * =========================================================================
+     * 5. UI RENDERING & CONTROLS
+     * =========================================================================
+     */
+    function renderAll() {
+      const cells = boardGrid.children;
+
+      // Determine which piece (if any) is about to expire on the player's next move
+      const expiringX = (state.mode === 'decay' && !state.gameOver && state.queueX.length === 3)
+        ? state.queueX[0] : -1;
+      const expiringO = (state.mode === 'decay' && !state.gameOver && state.queueO.length === 3)
+        ? state.queueO[0] : -1;
+
+      for (let i = 0; i < 9; i++) {
+        const cell = cells[i];
+        const mark = state.board[i];
+
+        // Reset classes
+        cell.className = 'game-cell flex items-center justify-center cursor-pointer focus:outline-none';
+
+        if (state.gameOver || state.aiThinking) {
+          cell.classList.add('board-locked');
+        }
+
+        if (mark) {
+          cell.classList.add('occupied');
+          const isExpiring = (i === expiringX || i === expiringO);
+          if (i === expiringX) cell.classList.add('cell-expiring-x');
+          if (i === expiringO) cell.classList.add('cell-expiring-o');
+
+          // Only re-inject SVG if mark or expiring state changed to preserve smooth entrance animation
+          const stateKey = `${mark}-${isExpiring}`;
+          if (cell.dataset.stateKey !== stateKey) {
+            cell.innerHTML = getMarkSVG(mark, isExpiring);
+            cell.dataset.stateKey = stateKey;
+          }
+        } else {
+          cell.innerHTML = '';
+          delete cell.dataset.stateKey;
+        }
+
+        // Highlight winning cells
+        if (state.winningLine && state.winningLine.includes(i)) {
+          cell.classList.add(mark === 'X' ? 'cell-win-x' : 'cell-win-o');
+        }
+      }
+
+      // Update Scoreboard & Active Card Glow
+      scoreXEl.textContent = state.scores.X;
+      scoreOEl.textContent = state.scores.O;
+      streakCountEl.textContent = state.streak;
+
+      labelX.textContent = state.opponent === 'ai' ? 'You' : 'Player 1';
+      labelO.textContent = state.opponent === 'ai' ? 'Cyber AI' : 'Player 2';
+
+      if (state.mode === 'decay') {
+        subtitleText.textContent = '3-Piece Limit • Zero Draws';
+        drawsLabelEl.textContent = 'No Draws';
+        slotsX.classList.remove('invisible');
+        slotsO.classList.remove('invisible');
+        updateChargeDots(slotsX, state.queueX.length, 'bg-cyan-400 shadow-[0_0_8px_#00f3ff]');
+        updateChargeDots(slotsO, state.queueO.length, 'bg-pink-500 shadow-[0_0_8px_#ff007f]');
+      } else {
+        subtitleText.textContent = 'Classic 3-in-a-Row Grid';
+        drawsLabelEl.textContent = `Draws: ${state.scores.draws}`;
+        slotsX.classList.add('invisible');
+        slotsO.classList.add('invisible');
+      }
+
+      // Highlight Active Player Card
+      if (!state.gameOver && state.currentPlayer === 'X') {
+        cardX.classList.add('border-cyan-400/70', 'bg-cyan-950/20', 'shadow-[0_0_20px_rgba(0,243,255,0.12)]');
+        cardX.classList.remove('border-white/10');
+        cardO.classList.remove('border-pink-500/70', 'bg-pink-950/20', 'shadow-[0_0_20px_rgba(255,0,127,0.12)]');
+        cardO.classList.add('border-white/10');
+      } else if (!state.gameOver && state.currentPlayer === 'O') {
+        cardO.classList.add('border-pink-500/70', 'bg-pink-950/20', 'shadow-[0_0_20px_rgba(255,0,127,0.12)]');
+        cardO.classList.remove('border-white/10');
+        cardX.classList.remove('border-cyan-400/70', 'bg-cyan-950/20', 'shadow-[0_0_20px_rgba(0,243,255,0.12)]');
+        cardX.classList.add('border-white/10');
+      }
+
+      updateStatusUI();
+    }
+
+    function updateChargeDots(container, count, activeClasses) {
+      const dots = container.children;
+      for (let i = 0; i < 3; i++) {
+        dots[i].className = `w-2 h-2 rounded-full transition-all duration-300 ${
+          i < count ? activeClasses : 'bg-slate-700'
+        }`;
+      }
+    }
+
+    function updateStatusUI() {
+      if (state.gameOver) {
+        if (state.winningLine) {
+          const winner = state.board[state.winningLine[0]];
+          const name = state.opponent === 'ai'
+            ? (winner === 'X' ? 'You Win!' : 'Cyber AI Wins!')
+            : `Player ${winner} Wins!`;
+          statusText.textContent = `🏆 ${name}`;
+          statusText.className = `text-sm font-display font-bold tracking-wider ${
+            winner === 'X' ? 'text-cyan-300' : 'text-pink-400'
+          }`;
+        } else {
+          statusText.textContent = '🤝 Grid Locked — Draw!';
+          statusText.className = 'text-sm font-display font-bold tracking-wider text-amber-300';
+        }
+        return;
+      }
+
+      if (state.aiThinking) {
+        statusText.textContent = '🤖 Cyber AI calculating...';
+        statusText.className = 'text-sm font-semibold tracking-wide text-pink-300 animate-pulse';
+        return;
+      }
+
+      const isX = state.currentPlayer === 'X';
+      const queue = isX ? state.queueX : state.queueO;
+      const decayHint = (state.mode === 'decay' && queue.length === 3)
+        ? ' • Oldest mark will vanish!'
+        : '';
+
+      const turnName = state.opponent === 'ai'
+        ? (isX ? 'Your Turn (X)' : "AI's Turn (O)")
+        : `Player ${state.currentPlayer}'s Turn`;
+
+      statusText.textContent = `${turnName}${decayHint}`;
+      statusText.className = `text-xs sm:text-sm font-semibold tracking-wide ${
+        isX ? 'text-cyan-300' : 'text-pink-300'
+      }`;
+    }
+
+    function startNewRound() {
+      state.board = Array(9).fill(null);
+      state.queueX = [];
+      state.queueO = [];
+      state.currentPlayer = 'X';
+      state.gameOver = false;
+      state.winningLine = null;
+      state.aiThinking = false;
+      renderAll();
+    }
+
+    // Event Listeners for Mode & Utility Buttons
+    const modeDecayBtn = document.getElementById('modeDecayBtn');
+    const modeClassicBtn = document.getElementById('modeClassicBtn');
+    const oppAiBtn = document.getElementById('oppAiBtn');
+    const oppPvpBtn = document.getElementById('oppPvpBtn');
+
+    modeDecayBtn.addEventListener('click', () => {
+      if (state.mode === 'decay') return;
+      sfx.playClick();
+      state.mode = 'decay';
+      modeDecayBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(0,243,255,0.15)]';
+      modeClassicBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent';
+      startNewRound();
+    });
+
+    modeClassicBtn.addEventListener('click', () => {
+      if (state.mode === 'classic') return;
+      sfx.playClick();
+      state.mode = 'classic';
+      modeClassicBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(0,243,255,0.15)]';
+      modeDecayBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent';
+      startNewRound();
+    });
+
+    oppAiBtn.addEventListener('click', () => {
+      if (state.opponent === 'ai') return;
+      sfx.playClick();
+      state.opponent = 'ai';
+      oppAiBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-pink-500/20 text-pink-300 border border-pink-400/40 shadow-[0_0_12px_rgba(255,0,127,0.15)]';
+      oppPvpBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent';
+      state.scores = { X: 0, O: 0, draws: 0 };
+      state.streak = 0;
+      startNewRound();
+    });
+
+    oppPvpBtn.addEventListener('click', () => {
+      if (state.opponent === 'pvp') return;
+      sfx.playClick();
+      state.opponent = 'pvp';
+      oppPvpBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition bg-pink-500/20 text-pink-300 border border-pink-400/40 shadow-[0_0_12px_rgba(255,0,127,0.15)]';
+      oppAiBtn.className = 'flex-1 py-2 px-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 border border-transparent';
+      state.scores = { X: 0, O: 0, draws: 0 };
+      state.streak = 0;
+      startNewRound();
+    });
+
+    document.getElementById('newRoundBtn').addEventListener('click', () => {
+      sfx.playClick();
+      startNewRound();
+    });
+
+    document.getElementById('resetScoresBtn').addEventListener('click', () => {
+      sfx.playClick();
+      state.scores = { X: 0, O: 0, draws: 0 };
+      state.streak = 0;
+      state.lastWinner = null;
+      startNewRound();
+    });
+
+    // Sound Toggle
+    const soundBtn = document.getElementById('soundBtn');
+    const soundOnIcon = document.getElementById('soundOnIcon');
+    const soundOffIcon = document.getElementById('soundOffIcon');
+    soundBtn.addEventListener('click', () => {
+      const muted = sfx.toggleMute();
+      soundOnIcon.classList.toggle('hidden', muted);
+      soundOffIcon.classList.toggle('hidden', !muted);
+      if (!muted) sfx.playClick();
+    });
+
+    // Rules Modal
+    const rulesModal = document.getElementById('rulesModal');
+    document.getElementById('rulesBtn').addEventListener('click', () => {
+      sfx.playClick();
+      rulesModal.classList.remove('hidden');
+      rulesModal.classList.add('flex');
+    });
+    document.getElementById('closeRulesBtn').addEventListener('click', () => {
+      sfx.playClick();
+      rulesModal.classList.add('hidden');
+      rulesModal.classList.remove('flex');
+    });
+    rulesModal.addEventListener('click', (e) => {
+      if (e.target === rulesModal) {
+        rulesModal.classList.add('hidden');
+        rulesModal.classList.remove('flex');
+      }
+    });
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      buildBoardDOM();
+      renderAll();
+    });
   </script>
 </body>
 </html>
